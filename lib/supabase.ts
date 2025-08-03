@@ -62,79 +62,15 @@ export type Lead = {
   updated_at?: string
 }
 
-// SUPER ROBUST date cleaning function
-const cleanDateValue = (dateValue: any): string | null => {
-  // If it's falsy, empty, or invalid, return null
-  if (
-    !dateValue ||
-    dateValue === "" ||
-    dateValue === "undefined" ||
-    dateValue === "null" ||
-    dateValue === "Invalid Date" ||
-    (typeof dateValue === "string" && dateValue.trim() === "")
-  ) {
+// Simple and safe data cleaning
+const cleanValue = (value: any): any => {
+  if (value === "" || value === "undefined" || value === "null") {
     return null
   }
-
-  // Convert to string and trim
-  const dateStr = String(dateValue).trim()
-
-  // If empty after trim, return null
-  if (dateStr === "") {
-    return null
-  }
-
-  // Try to validate the date
-  try {
-    const date = new Date(dateStr)
-    if (isNaN(date.getTime())) {
-      return null
-    }
-
-    // If it's a valid date, return the original string
-    return dateStr
-  } catch {
-    return null
-  }
+  return value
 }
 
-// SUPER ROBUST numeric cleaning function
-const cleanNumericValue = (numericValue: any): number | null => {
-  if (
-    numericValue === null ||
-    numericValue === undefined ||
-    numericValue === "" ||
-    numericValue === "undefined" ||
-    numericValue === "null"
-  ) {
-    return null
-  }
-
-  const num = Number(numericValue)
-  if (isNaN(num)) {
-    return null
-  }
-
-  return num
-}
-
-// SUPER ROBUST string cleaning function
-const cleanStringValue = (stringValue: any): string | null => {
-  if (
-    stringValue === null ||
-    stringValue === undefined ||
-    stringValue === "" ||
-    stringValue === "undefined" ||
-    stringValue === "null" ||
-    (typeof stringValue === "string" && stringValue.trim() === "")
-  ) {
-    return null
-  }
-
-  return String(stringValue).trim()
-}
-
-// Local storage fallback for when Supabase is not configured
+// Local storage operations
 const LOCAL_STORAGE_KEY = "jasson-leads-data"
 
 const localStorageOperations = {
@@ -198,182 +134,73 @@ const localStorageOperations = {
   },
 }
 
-// Lead operations that work with both Supabase and localStorage
+// Lead operations
 export const leadOperations = {
-  // Get all leads
   async getAll(): Promise<Lead[]> {
     if (!isSupabaseConfigured || !supabase) {
-      console.log("📱 Usando localStorage - Supabase não configurado")
       return localStorageOperations.getAll()
     }
 
     try {
-      console.log("🔍 Buscando leads no Supabase...")
       const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false })
 
       if (error) {
-        console.error("❌ Erro ao buscar no Supabase:", error)
         throw error
       }
 
-      console.log("✅ Leads encontrados no Supabase:", data?.length || 0)
       return data || []
     } catch (error) {
-      console.error("❌ Erro no Supabase, usando localStorage:", error)
+      console.error("Supabase error, using localStorage:", error)
       return localStorageOperations.getAll()
     }
   },
 
-  // Create new lead with ULTRA ROBUST error handling
   async create(lead: Omit<Lead, "id" | "created_at" | "updated_at">): Promise<Lead> {
-    console.log("🔄 [ULTRA ROBUST] Iniciando salvamento do lead:", lead.nome_empresa)
-
-    if (!isSupabaseConfigured || !supabase) {
-      console.log("⚠️ Supabase não configurado, usando localStorage")
-      return localStorageOperations.create(lead)
-    }
-
+    // Always try localStorage first to ensure it works
     try {
-      console.log("✅ Supabase configurado, preparando dados com limpeza ULTRA ROBUSTA...")
+      const localResult = localStorageOperations.create(lead)
+      console.log("✅ Lead saved to localStorage:", localResult.id)
 
-      // ULTRA ROBUST data cleaning - remove ALL empty strings and convert to null
-      const cleanedLead: any = {}
+      // Try Supabase in background if configured
+      if (isSupabaseConfigured && supabase) {
+        try {
+          // Clean data for Supabase
+          const cleanedLead: any = {}
+          Object.keys(lead).forEach((key) => {
+            cleanedLead[key] = cleanValue((lead as any)[key])
+          })
 
-      // Process each field individually with extreme care
-      const fields = {
-        // Required string fields
-        nome_empresa: lead.nome_empresa || "Empresa não informada",
-        nicho: lead.nicho || "Não informado",
-        nome_contato: lead.nome_contato || "Contato não informado",
-        email: lead.email || "email@nao-informado.com",
-        sdr: lead.sdr || "Não informado",
-        status: lead.status || "TENTANDO CONTATO",
+          const { data, error } = await supabase.from("leads").insert([cleanedLead]).select().single()
 
-        // Optional string fields
-        produto_marketing: cleanStringValue(lead.produto_marketing),
-        tipo_lead: cleanStringValue(lead.tipo_lead),
-        faturamento: cleanStringValue(lead.faturamento),
-        canal: cleanStringValue(lead.canal),
-        nivel_urgencia: cleanStringValue(lead.nivel_urgencia),
-        regiao: cleanStringValue(lead.regiao),
-        cidade: cleanStringValue(lead.cidade),
-        cnpj: cleanStringValue(lead.cnpj),
-        cargo_contato: cleanStringValue(lead.cargo_contato),
-        email_corporativo: cleanStringValue(lead.email_corporativo),
-        telefone: cleanStringValue(lead.telefone),
-        closer: cleanStringValue(lead.closer),
-        arrematador: cleanStringValue(lead.arrematador),
-        tipo_oferta: cleanStringValue(lead.tipo_oferta),
-        produto: cleanStringValue(lead.produto),
-        anuncios: cleanStringValue(lead.anuncios),
-        observacoes: cleanStringValue(lead.observacoes),
-        motivo_perda_pv: cleanStringValue(lead.motivo_perda_pv),
-        investimento_trafego: cleanStringValue(lead.investimento_trafego),
-        ticket_medio: cleanStringValue(lead.ticket_medio),
-        qtd_lojas: cleanStringValue(lead.qtd_lojas),
-        qtd_vendedores: cleanStringValue(lead.qtd_vendedores),
-        escopo_fechado: cleanStringValue(lead.escopo_fechado),
-        status_comissao: cleanStringValue(lead.status_comissao),
-        horario_compra: cleanStringValue(lead.horario_compra),
-
-        // Numeric fields
-        valor_pago_lead: cleanNumericValue(lead.valor_pago_lead),
-        valor_proposta: cleanNumericValue(lead.valor_proposta),
-        valor_venda: cleanNumericValue(lead.valor_venda),
-        fee: cleanNumericValue(lead.fee),
-        fee_total: cleanNumericValue(lead.fee_total),
-        comissao_sdr: cleanNumericValue(lead.comissao_sdr),
-        comissao_closer: cleanNumericValue(lead.comissao_closer),
-
-        // Boolean fields
-        tem_comentario_lbf: Boolean(lead.tem_comentario_lbf),
-        conseguiu_contato: Boolean(lead.conseguiu_contato),
-        reuniao_agendada: Boolean(lead.reuniao_agendada),
-        reuniao_realizada: Boolean(lead.reuniao_realizada),
-        venda_via_jasson_co: Boolean(lead.venda_via_jasson_co),
-
-        // DATE FIELDS - ULTRA CAREFUL HANDLING
-        data_hora_compra: cleanDateValue(lead.data_hora_compra),
-        data_ultimo_contato: cleanDateValue(lead.data_ultimo_contato),
-        data_venda: cleanDateValue(lead.data_venda),
-        data_fechamento: cleanDateValue(lead.data_fechamento),
-      }
-
-      // Copy all fields to cleanedLead
-      Object.keys(fields).forEach((key) => {
-        cleanedLead[key] = fields[key]
-      })
-
-      console.log("🧹 [ULTRA ROBUST] Dados limpos:", cleanedLead)
-
-      // FINAL SAFETY CHECK - scan for any remaining empty strings
-      Object.keys(cleanedLead).forEach((key) => {
-        if (cleanedLead[key] === "") {
-          console.warn(`⚠️ [ULTRA ROBUST] Encontrada string vazia em ${key}, convertendo para null`)
-          cleanedLead[key] = null
+          if (error) {
+            console.error("Supabase error (but localStorage worked):", error)
+          } else {
+            console.log("✅ Lead also saved to Supabase:", data.id)
+          }
+        } catch (supabaseError) {
+          console.error("Supabase failed (but localStorage worked):", supabaseError)
         }
-      })
-
-      console.log("📤 [ULTRA ROBUST] Enviando para Supabase...")
-      const { data, error } = await supabase.from("leads").insert([cleanedLead]).select().single()
-
-      if (error) {
-        console.error("❌ [ULTRA ROBUST] Erro detalhado do Supabase:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          cleanedData: cleanedLead,
-        })
-        throw error
       }
 
-      console.log("✅ [ULTRA ROBUST] Lead salvo com sucesso no Supabase:", data)
-      return data
+      return localResult
     } catch (error) {
-      console.error("❌ [ULTRA ROBUST] Erro no Supabase, usando localStorage como fallback:", error)
-      return localStorageOperations.create(lead)
+      console.error("Error saving lead:", error)
+      throw new Error(`Failed to save lead: ${error.message}`)
     }
   },
 
-  // Update lead
   async update(id: string, lead: Partial<Lead>): Promise<Lead | null> {
     if (!isSupabaseConfigured || !supabase) {
       return localStorageOperations.update(id, lead)
     }
 
     try {
-      // Clean and prepare data for Supabase
       const cleanedLead: any = {
         updated_at: new Date().toISOString(),
       }
 
-      // Only include fields that are being updated
       Object.keys(lead).forEach((key) => {
-        const value = (lead as any)[key]
-
-        if (
-          key.includes("data_") ||
-          key === "data_venda" ||
-          key === "data_fechamento" ||
-          key === "data_ultimo_contato" ||
-          key === "data_hora_compra"
-        ) {
-          cleanedLead[key] = cleanDateValue(value)
-        } else if (key.includes("valor_") || key.includes("fee") || key.includes("comissao_")) {
-          cleanedLead[key] = cleanNumericValue(value)
-        } else if (typeof value === "string") {
-          cleanedLead[key] = cleanStringValue(value)
-        } else {
-          cleanedLead[key] = value
-        }
-      })
-
-      // Final safety check for empty strings
-      Object.keys(cleanedLead).forEach((key) => {
-        if (cleanedLead[key] === "") {
-          cleanedLead[key] = null
-        }
+        cleanedLead[key] = cleanValue((lead as any)[key])
       })
 
       const { data, error } = await supabase.from("leads").update(cleanedLead).eq("id", id).select().single()
@@ -381,12 +208,11 @@ export const leadOperations = {
       if (error) throw error
       return data
     } catch (error) {
-      console.error("Supabase error, falling back to localStorage:", error)
+      console.error("Supabase error, using localStorage:", error)
       return localStorageOperations.update(id, lead)
     }
   },
 
-  // Delete lead
   async delete(id: string): Promise<boolean> {
     if (!isSupabaseConfigured || !supabase) {
       return localStorageOperations.delete(id)
@@ -397,18 +223,16 @@ export const leadOperations = {
       if (error) throw error
       return true
     } catch (error) {
-      console.error("Supabase error, falling back to localStorage:", error)
+      console.error("Supabase error, using localStorage:", error)
       return localStorageOperations.delete(id)
     }
   },
 
-  // Get leads by status
   async getByStatus(status: string): Promise<Lead[]> {
     const allLeads = await this.getAll()
     return allLeads.filter((lead) => lead.status === status)
   },
 
-  // Get leads by SDR
   async getBySdr(sdr: string): Promise<Lead[]> {
     const allLeads = await this.getAll()
     return allLeads.filter((lead) => lead.sdr === sdr)

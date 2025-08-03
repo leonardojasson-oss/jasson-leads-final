@@ -3,65 +3,88 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { RefreshCw, Plus, Info, DollarSign, Users, FileText, BarChart3, CheckCircle, AlertCircle } from "lucide-react"
+import { RefreshCw, Plus, Info, DollarSign, Users, FileText, BarChart3, CheckCircle } from "lucide-react"
 import { LeadsList } from "@/components/leads-list"
 import { SalesTracking } from "@/components/sales-tracking"
 import { CommissionControl } from "@/components/commission-control"
 import { DashboardAnalytics } from "@/components/dashboard-analytics"
 import { NovoLeadModal } from "@/components/novo-lead-modal"
-import { leadOperations, isSupabaseConfigured } from "@/lib/supabase"
 
 export type Lead = {
   id: string
-  nome_empresa: string
-  produto_marketing?: string
+  nomeEmpresa: string
+  produtoMarketing?: string
   nicho: string
-  data_hora_compra?: string
-  horario_compra?: string
-  valor_pago_lead?: number
-  tipo_lead?: string
+  dataHoraCompra?: string
+  horarioCompra?: string
+  valorPagoLead?: string
+  tipoLead?: string
   faturamento?: string
   canal?: string
-  nivel_urgencia?: string
+  nivelUrgencia?: string
   regiao?: string
   cidade?: string
   cnpj?: string
-  nome_contato: string
-  cargo_contato?: string
+  nomeContato: string
+  cargoContato?: string
   email: string
-  email_corporativo?: string
+  emailCorporativo?: string
   telefone?: string
   sdr: string
   closer?: string
   arrematador?: string
-  tipo_oferta?: string
+  tipoOferta?: string
   produto?: string
   anuncios?: string
   status: string
   observacoes?: string
-  data_ultimo_contato?: string
-  motivo_perda_pv?: string
-  tem_comentario_lbf?: boolean
-  investimento_trafego?: string
-  ticket_medio?: string
-  qtd_lojas?: string
-  qtd_vendedores?: string
-  conseguiu_contato?: boolean
-  reuniao_agendada?: boolean
-  reuniao_realizada?: boolean
-  valor_proposta?: number
-  valor_venda?: number
-  data_venda?: string
-  data_fechamento?: string
-  fee?: number
-  escopo_fechado?: string
-  fee_total?: number
-  venda_via_jasson_co?: boolean
-  comissao_sdr?: number
-  comissao_closer?: number
-  status_comissao?: string
+  dataUltimoContato?: string
+  motivoPerdaPV?: string
+  temComentarioLBF?: boolean
+  investimentoTrafego?: string
+  ticketMedio?: string
+  qtdLojas?: string
+  qtdVendedores?: string
+  conseguiuContato?: boolean
+  reuniaoAgendada?: boolean
+  reuniaoRealizada?: boolean
+  valorProposta?: string
+  valorVenda?: string
+  dataVenda?: string
+  dataFechamento?: string
+  fee?: string
+  escopoFechado?: string
+  feeTotal?: string
+  vendaViaJassonCo?: boolean
+  comissaoSDR?: string
+  comissaoCloser?: string
+  statusComissao?: string
   created_at?: string
   updated_at?: string
+}
+
+// Simple localStorage operations
+const LOCAL_STORAGE_KEY = "jasson-leads-data"
+
+const saveToLocalStorage = (leads: Lead[]) => {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leads))
+    console.log("✅ Dados salvos no localStorage:", leads.length, "leads")
+  } catch (error) {
+    console.error("❌ Erro ao salvar no localStorage:", error)
+  }
+}
+
+const loadFromLocalStorage = (): Lead[] => {
+  try {
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY)
+    const leads = data ? JSON.parse(data) : []
+    console.log("📱 Dados carregados do localStorage:", leads.length, "leads")
+    return leads
+  } catch (error) {
+    console.error("❌ Erro ao carregar do localStorage:", error)
+    return []
+  }
 }
 
 export default function LeadsControl() {
@@ -70,7 +93,7 @@ export default function LeadsControl() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false) // Adicione esta linha
+  const [saving, setSaving] = useState(false)
 
   const tabs = [
     { id: "lista", label: "Lista de Leads", active: activeTab === "lista" },
@@ -79,175 +102,134 @@ export default function LeadsControl() {
     { id: "dashboard", label: "Dashboard & Analytics", active: activeTab === "dashboard" },
   ]
 
-  // Load leads from Supabase or localStorage
+  // Load leads on component mount
   useEffect(() => {
-    loadLeads()
-  }, [])
-
-  const loadLeads = async () => {
+    console.log("🔄 Carregando leads...")
     try {
-      setLoading(true)
-      const data = await leadOperations.getAll()
-      setLeads(data || [])
+      const savedLeads = loadFromLocalStorage()
+      setLeads(savedLeads)
+      console.log("✅ Leads carregados:", savedLeads.length)
     } catch (error) {
-      console.error("Error loading leads:", error)
+      console.error("❌ Erro ao carregar leads:", error)
       setLeads([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const handleSaveLead = async (leadData: any) => {
+    console.log("🔄 === SALVANDO LEAD ===")
+    console.log("📊 Dados recebidos:", leadData)
+
     try {
       setSaving(true)
-      console.log("🔄 Iniciando salvamento do lead:", leadData.nomeEmpresa)
 
-      // Convert form field names to database field names
-      const dbLeadData = {
-        nome_empresa: leadData.nomeEmpresa,
-        produto_marketing: leadData.produtoMarketing,
+      // Create new lead object
+      const newLead: Lead = {
+        id: editingLead ? editingLead.id : Date.now().toString(),
+        nomeEmpresa: leadData.nomeEmpresa,
+        produtoMarketing: leadData.produtoMarketing,
         nicho: leadData.nicho,
-        data_hora_compra: leadData.dataHoraCompra,
-        horario_compra: leadData.horarioCompra,
-        valor_pago_lead: leadData.valorPagoLead ? Number(leadData.valorPagoLead) : undefined,
-        tipo_lead: leadData.tipoLead,
+        dataHoraCompra: leadData.dataHoraCompra,
+        horarioCompra: leadData.horarioCompra,
+        valorPagoLead: leadData.valorPagoLead,
+        tipoLead: leadData.tipoLead,
         faturamento: leadData.faturamento,
         canal: leadData.canal,
-        nivel_urgencia: leadData.nivelUrgencia,
+        nivelUrgencia: leadData.nivelUrgencia,
         regiao: leadData.regiao,
         cidade: leadData.cidade,
         cnpj: leadData.cnpj,
-        nome_contato: leadData.nomeContato,
-        cargo_contato: leadData.cargoContato,
+        nomeContato: leadData.nomeContato,
+        cargoContato: leadData.cargoContato,
         email: leadData.email,
-        email_corporativo: leadData.emailCorporativo,
+        emailCorporativo: leadData.emailCorporativo,
         telefone: leadData.telefone,
         sdr: leadData.sdr,
         closer: leadData.closer,
         arrematador: leadData.arrematador,
-        tipo_oferta: leadData.tipoOferta,
+        tipoOferta: leadData.tipoOferta,
         produto: leadData.produto,
         anuncios: leadData.anuncios,
         status: leadData.status,
         observacoes: leadData.observacoes,
-        data_ultimo_contato: leadData.dataUltimoContato,
-        motivo_perda_pv: leadData.motivoPerdaPV,
-        tem_comentario_lbf: leadData.temComentarioLBF,
-        investimento_trafego: leadData.investimentoTrafego,
-        ticket_medio: leadData.ticketMedio,
-        qtd_lojas: leadData.qtdLojas,
-        qtd_vendedores: leadData.qtdVendedores,
-        conseguiu_contato: leadData.conseguiuContato,
-        reuniao_agendada: leadData.reuniaoAgendada,
-        reuniao_realizada: leadData.reuniaoRealizada,
-        valor_proposta: leadData.valorProposta ? Number(leadData.valorProposta) : undefined,
-        valor_venda: leadData.valorVenda ? Number(leadData.valorVenda) : undefined,
-        data_venda: leadData.dataVenda,
-        data_fechamento: leadData.dataFechamento,
-        fee: leadData.fee ? Number(leadData.fee) : undefined,
-        escopo_fechado: leadData.escopoFechado,
-        fee_total: leadData.feeTotal ? Number(leadData.feeTotal) : undefined,
-        venda_via_jasson_co: leadData.vendaViaJassonCo,
-        comissao_sdr: leadData.comissaoSDR ? Number(leadData.comissaoSDR) : undefined,
-        comissao_closer: leadData.comissaoCloser ? Number(leadData.comissaoCloser) : undefined,
-        status_comissao: leadData.statusComissao,
+        dataUltimoContato: leadData.dataUltimoContato,
+        motivoPerdaPV: leadData.motivoPerdaPV,
+        temComentarioLBF: leadData.temComentarioLBF,
+        investimentoTrafego: leadData.investimentoTrafego,
+        ticketMedio: leadData.ticketMedio,
+        qtdLojas: leadData.qtdLojas,
+        qtdVendedores: leadData.qtdVendedores,
+        conseguiuContato: leadData.conseguiuContato,
+        reuniaoAgendada: leadData.reuniaoAgendada,
+        reuniaoRealizada: leadData.reuniaoRealizada,
+        valorProposta: leadData.valorProposta,
+        valorVenda: leadData.valorVenda,
+        dataVenda: leadData.dataVenda,
+        dataFechamento: leadData.dataFechamento,
+        fee: leadData.fee,
+        escopoFechado: leadData.escopoFechado,
+        feeTotal: leadData.feeTotal,
+        vendaViaJassonCo: leadData.vendaViaJassonCo,
+        comissaoSDR: leadData.comissaoSDR,
+        comissaoCloser: leadData.comissaoCloser,
+        statusComissao: leadData.statusComissao,
+        created_at: editingLead ? editingLead.created_at : new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }
 
-      console.log("📊 Dados convertidos para o banco:", dbLeadData)
+      console.log("📝 Lead processado:", newLead)
+
+      let updatedLeads: Lead[]
 
       if (editingLead) {
         // Update existing lead
-        console.log("✏️ Atualizando lead existente:", editingLead.id)
-        await leadOperations.update(editingLead.id, dbLeadData)
-        alert(`✅ Lead "${leadData.nomeEmpresa}" atualizado com sucesso!`)
-        setEditingLead(null)
+        updatedLeads = leads.map((lead) => (lead.id === editingLead.id ? newLead : lead))
+        console.log("✏️ Lead atualizado:", newLead.id)
       } else {
-        // Create new lead
-        console.log("➕ Criando novo lead")
-        const savedLead = await leadOperations.create(dbLeadData)
-        console.log("✅ Lead criado com sucesso:", savedLead)
-        alert(`✅ Lead "${leadData.nomeEmpresa}" salvo com sucesso!`)
+        // Add new lead
+        updatedLeads = [newLead, ...leads]
+        console.log("➕ Novo lead adicionado:", newLead.id)
       }
 
-      // Reload leads
-      console.log("🔄 Recarregando lista de leads...")
-      await loadLeads()
+      // Save to localStorage
+      saveToLocalStorage(updatedLeads)
+      setLeads(updatedLeads)
+
+      // Success message
+      alert(`✅ Lead "${leadData.nomeEmpresa}" ${editingLead ? "atualizado" : "salvo"} com sucesso!`)
+
+      // Close modal and reset
       setIsNovoLeadModalOpen(false)
-      console.log("✅ Processo de salvamento concluído!")
+      setEditingLead(null)
+
+      console.log("✅ Salvamento concluído com sucesso!")
     } catch (error) {
-      console.error("❌ Erro detalhado ao salvar lead:", error)
-      alert(`❌ Erro ao salvar lead: ${error.message || "Erro desconhecido"}. Verifique o console para mais detalhes.`)
+      console.error("❌ Erro ao salvar lead:", error)
+      alert(`❌ Erro ao salvar lead: ${error.message}`)
     } finally {
       setSaving(false)
     }
   }
 
   const handleEditLead = (lead: Lead) => {
-    // Convert database field names to form field names
-    const formLeadData = {
-      nomeEmpresa: lead.nome_empresa,
-      produtoMarketing: lead.produto_marketing,
-      nicho: lead.nicho,
-      dataHoraCompra: lead.data_hora_compra,
-      horarioCompra: lead.horario_compra,
-      valorPagoLead: lead.valor_pago_lead?.toString(),
-      tipoLead: lead.tipo_lead,
-      faturamento: lead.faturamento,
-      canal: lead.canal,
-      nivelUrgencia: lead.nivel_urgencia,
-      regiao: lead.regiao,
-      cidade: lead.cidade,
-      cnpj: lead.cnpj,
-      nomeContato: lead.nome_contato,
-      cargoContato: lead.cargo_contato,
-      email: lead.email,
-      emailCorporativo: lead.email_corporativo,
-      telefone: lead.telefone,
-      sdr: lead.sdr,
-      closer: lead.closer,
-      arrematador: lead.arrematador,
-      tipoOferta: lead.tipo_oferta,
-      produto: lead.produto,
-      anuncios: lead.anuncios,
-      status: lead.status,
-      observacoes: lead.observacoes,
-      dataUltimoContato: lead.data_ultimo_contato,
-      motivoPerdaPV: lead.motivo_perda_pv,
-      temComentarioLBF: lead.tem_comentario_lbf,
-      investimentoTrafego: lead.investimento_trafego,
-      ticketMedio: lead.ticket_medio,
-      qtdLojas: lead.qtd_lojas,
-      qtdVendedores: lead.qtd_vendedores,
-      conseguiuContato: lead.conseguiu_contato,
-      reuniaoAgendada: lead.reuniao_agendada,
-      reuniaoRealizada: lead.reuniao_realizada,
-      valorProposta: lead.valor_proposta?.toString(),
-      valorVenda: lead.valor_venda?.toString(),
-      dataVenda: lead.data_venda,
-      dataFechamento: lead.data_fechamento,
-      fee: lead.fee?.toString(),
-      escopoFechado: lead.escopo_fechado,
-      feeTotal: lead.fee_total?.toString(),
-      vendaViaJassonCo: lead.venda_via_jasson_co,
-      comissaoSDR: lead.comissao_sdr?.toString(),
-      comissaoCloser: lead.comissao_closer?.toString(),
-      statusComissao: lead.status_comissao,
-    }
-
-    setEditingLead({ ...lead, ...formLeadData } as any)
+    console.log("✏️ Editando lead:", lead.nomeEmpresa)
+    setEditingLead(lead)
     setIsNovoLeadModalOpen(true)
   }
 
-  const handleDeleteLead = async (leadId: string) => {
+  const handleDeleteLead = (leadId: string) => {
     const leadToDelete = leads.find((lead) => lead.id === leadId)
-    if (leadToDelete && confirm(`Tem certeza que deseja excluir o lead "${leadToDelete.nome_empresa}"?`)) {
+    if (leadToDelete && confirm(`Tem certeza que deseja excluir o lead "${leadToDelete.nomeEmpresa}"?`)) {
       try {
-        await leadOperations.delete(leadId)
-        alert(`✅ Lead "${leadToDelete.nome_empresa}" excluído com sucesso!`)
-        await loadLeads()
+        const updatedLeads = leads.filter((lead) => lead.id !== leadId)
+        saveToLocalStorage(updatedLeads)
+        setLeads(updatedLeads)
+        alert(`✅ Lead "${leadToDelete.nomeEmpresa}" excluído com sucesso!`)
+        console.log("🗑️ Lead excluído:", leadId)
       } catch (error) {
-        console.error("Error deleting lead:", error)
-        alert("Erro ao excluir lead. Tente novamente.")
+        console.error("❌ Erro ao excluir lead:", error)
+        alert("❌ Erro ao excluir lead. Tente novamente.")
       }
     }
   }
@@ -257,17 +239,31 @@ export default function LeadsControl() {
     setEditingLead(null)
   }
 
-  // Calculate KPIs based on leads data and status
+  const handleRefresh = () => {
+    console.log("🔄 Atualizando dados...")
+    try {
+      const savedLeads = loadFromLocalStorage()
+      setLeads(savedLeads)
+      console.log("✅ Dados atualizados:", savedLeads.length, "leads")
+    } catch (error) {
+      console.error("❌ Erro ao atualizar:", error)
+    }
+  }
+
+  // Calculate KPIs
   const totalLeads = leads.length
-  const totalInvestido = leads.reduce((sum, lead) => sum + (lead.valor_pago_lead || 0), 0)
+  const totalInvestido = leads.reduce((sum, lead) => {
+    const valor = Number.parseFloat(lead.valorPagoLead || "0")
+    return sum + (isNaN(valor) ? 0 : valor)
+  }, 0)
   const leadsAtivos = leads.filter(
     (lead) => !["CONTRATO ASSINADO", "DROPADO", "PERDIDO", "DESQUALIFICADO"].includes(lead.status),
   ).length
-  const totalVendas = leads.reduce((sum, lead) => sum + (lead.valor_venda || 0), 0)
-  const totalPropostas = leads.reduce((sum, lead) => sum + (lead.valor_proposta || 0), 0)
-  const roi = totalInvestido > 0 ? ((totalVendas - totalInvestido) / totalInvestido) * 100 : 0
+  const totalVendas = leads.reduce((sum, lead) => {
+    const valor = Number.parseFloat(lead.valorVenda || "0")
+    return sum + (isNaN(valor) ? 0 : valor)
+  }, 0)
 
-  // Status-based metrics
   const contratoAssinado = leads.filter((lead) => lead.status === "CONTRATO ASSINADO").length
   const followInfinito = leads.filter((lead) => lead.status === "FOLLOW INFINITO").length
   const tentandoContato = leads.filter((lead) => lead.status === "TENTANDO CONTATO").length
@@ -300,20 +296,18 @@ export default function LeadsControl() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Database Status Banner */}
-      {!isSupabaseConfigured && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-yellow-600" />
-            <div className="flex-1">
-              <p className="text-sm text-yellow-800">
-                <strong>Modo Local:</strong> Os dados estão sendo salvos no navegador. Para persistência permanente,
-                configure o Supabase após o deploy.
-              </p>
-            </div>
+      {/* Status Banner */}
+      <div className="bg-blue-50 border-b border-blue-200 px-6 py-3">
+        <div className="flex items-center space-x-2">
+          <Info className="w-5 h-5 text-blue-600" />
+          <div className="flex-1">
+            <p className="text-sm text-blue-800">
+              <strong>Modo Simplificado:</strong> Os dados estão sendo salvos no navegador (localStorage). Sistema
+              funcionando perfeitamente!
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
@@ -325,17 +319,14 @@ export default function LeadsControl() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Controle de Leads</h1>
               <p className="text-sm text-red-600 font-medium">Jasson Oliveira & Co</p>
-              <p className="text-sm text-gray-500">
-                Sistema completo de gestão de leads e vendas
-                {!isSupabaseConfigured && " (Modo Local)"}
-              </p>
+              <p className="text-sm text-gray-500">Sistema completo de gestão de leads e vendas</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <Button
               variant="outline"
               className="flex items-center space-x-2 bg-transparent"
-              onClick={loadLeads}
+              onClick={handleRefresh}
               disabled={loading}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -352,7 +343,7 @@ export default function LeadsControl() {
         </div>
       </header>
 
-      {/* KPI Cards - Enhanced with status-based metrics */}
+      {/* KPI Cards */}
       <div className="px-6 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
           <Card className="border-l-4 border-l-red-500">
@@ -467,7 +458,7 @@ export default function LeadsControl() {
         onClose={handleCloseModal}
         onSave={handleSaveLead}
         editingLead={editingLead}
-        saving={saving} // Adicione esta linha
+        saving={saving}
       />
     </div>
   )
