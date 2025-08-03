@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { X, RefreshCw } from 'lucide-react'
+import { X, RefreshCw, Sparkles, Copy } from 'lucide-react'
 import type { Lead } from "@/app/page"
 
 interface NovoLeadModalProps {
@@ -20,34 +21,29 @@ interface NovoLeadModalProps {
 
 export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = false }: NovoLeadModalProps) {
   const [formData, setFormData] = useState({
-    // Campos obrigatórios
     nomeEmpresa: "",
     produtoMarketing: "",
     nicho: "",
+    dataHoraCompra: "",
     valorPagoLead: "",
     origemLead: "", // Mudança: era "tipoLead"
-    nomeContato: "",
-    email: "",
-    telefone: "",
-    sdr: "",
-    arrematador: "", // Agora obrigatório
-
-    // Campos opcionais
-    status: "", // Agora opcional
-    dataHoraCompra: "",
-    // horarioCompra removido
     faturamento: "",
     canal: "",
     nivelUrgencia: "",
     regiao: "",
     cidade: "",
     cnpj: "",
+    nomeContato: "",
     cargoContato: "",
+    email: "",
     emailCorporativo: "",
+    telefone: "",
+    sdr: "",
     closer: "",
-    // tipoOferta removido
+    arrematador: "", // Agora obrigatório
     produto: "",
     anuncios: "",
+    status: "", // Agora opcional
     observacoes: "",
     dataUltimoContato: "",
     motivoPerdaPV: "",
@@ -72,6 +68,9 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
     statusComissao: "",
   })
 
+  const [autoFillData, setAutoFillData] = useState("")
+  const [showAutoFill, setShowAutoFill] = useState(false)
+
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
@@ -80,26 +79,26 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         nomeEmpresa: "",
         produtoMarketing: "",
         nicho: "",
+        dataHoraCompra: "",
         valorPagoLead: "",
         origemLead: "",
-        nomeContato: "",
-        email: "",
-        telefone: "",
-        sdr: "",
-        arrematador: "",
-        status: "",
-        dataHoraCompra: "",
         faturamento: "",
         canal: "",
         nivelUrgencia: "",
         regiao: "",
         cidade: "",
         cnpj: "",
+        nomeContato: "",
         cargoContato: "",
+        email: "",
         emailCorporativo: "",
+        telefone: "",
+        sdr: "",
         closer: "",
+        arrematador: "",
         produto: "",
         anuncios: "",
+        status: "",
         observacoes: "",
         dataUltimoContato: "",
         motivoPerdaPV: "",
@@ -123,6 +122,8 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         comissaoCloser: "",
         statusComissao: "",
       })
+      setAutoFillData("")
+      setShowAutoFill(false)
     }
 
     if (editingLead && isOpen) {
@@ -131,26 +132,26 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         nomeEmpresa: editingLead.nomeEmpresa || "",
         produtoMarketing: editingLead.produtoMarketing || "",
         nicho: editingLead.nicho || "",
+        dataHoraCompra: editingLead.dataHoraCompra || "",
         valorPagoLead: editingLead.valorPagoLead || "",
         origemLead: editingLead.tipoLead || "", // Compatibilidade
-        nomeContato: editingLead.nomeContato || "",
-        email: editingLead.email || "",
-        telefone: editingLead.telefone || "",
-        sdr: editingLead.sdr || "",
-        arrematador: editingLead.arrematador || "",
-        status: editingLead.status || "",
-        dataHoraCompra: editingLead.dataHoraCompra || "",
         faturamento: editingLead.faturamento || "",
         canal: editingLead.canal || "",
         nivelUrgencia: editingLead.nivelUrgencia || "",
         regiao: editingLead.regiao || "",
         cidade: editingLead.cidade || "",
         cnpj: editingLead.cnpj || "",
+        nomeContato: editingLead.nomeContato || "",
         cargoContato: editingLead.cargoContato || "",
+        email: editingLead.email || "",
         emailCorporativo: editingLead.emailCorporativo || "",
+        telefone: editingLead.telefone || "",
+        sdr: editingLead.sdr || "",
         closer: editingLead.closer || "",
+        arrematador: editingLead.arrematador || "",
         produto: editingLead.produto || "",
         anuncios: editingLead.anuncios || "",
+        status: editingLead.status || "",
         observacoes: editingLead.observacoes || "",
         dataUltimoContato: editingLead.dataUltimoContato || "",
         motivoPerdaPV: editingLead.motivoPerdaPV || "",
@@ -178,62 +179,108 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
   }, [editingLead, isOpen])
 
   const handleInputChange = (field: string, value: any) => {
-    console.log(`🔄 Alterando campo ${field}:`, value)
-    try {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: value,
-      }))
-    } catch (error) {
-      console.error(`❌ Erro ao alterar campo ${field}:`, error)
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  // Auto-fill parser function (MANTIDO ORIGINAL)
+  const parseAutoFillData = (data: string) => {
+    console.log("🔄 Parsing auto-fill data:", data)
+    
+    const lines = data.split('\n').map(line => line.trim()).filter(line => line)
+    const parsed: any = {}
+
+    for (const line of lines) {
+      // Company name patterns
+      if (line.includes('Empresa:') || line.includes('Nome da empresa:') || line.includes('Company:')) {
+        parsed.nomeEmpresa = line.split(':')[1]?.trim()
+      }
+      // Contact name patterns
+      else if (line.includes('Contato:') || line.includes('Nome:') || line.includes('Contact:')) {
+        parsed.nomeContato = line.split(':')[1]?.trim()
+      }
+      // Email patterns
+      else if (line.includes('@') && (line.includes('Email:') || line.includes('E-mail:') || line.includes('email'))) {
+        const emailMatch = line.match(/[\w.-]+@[\w.-]+\.\w+/)
+        if (emailMatch) parsed.email = emailMatch[0]
+      }
+      // Phone patterns
+      else if (line.includes('Telefone:') || line.includes('Phone:') || line.includes('Tel:')) {
+        parsed.telefone = line.split(':')[1]?.trim()
+      }
+      // Product patterns
+      else if (line.includes('Produto:') || line.includes('Product:') || line.includes('Serviço:')) {
+        parsed.produtoMarketing = line.split(':')[1]?.trim()
+      }
+      // Value patterns
+      else if (line.includes('Valor:') || line.includes('Price:') || line.includes('R$')) {
+        const valueMatch = line.match(/R?\$?\s*(\d+[.,]?\d*)/)
+        if (valueMatch) parsed.valorPagoLead = valueMatch[1].replace(',', '.')
+      }
+      // City patterns
+      else if (line.includes('Cidade:') || line.includes('City:') || line.includes('Local:')) {
+        parsed.cidade = line.split(':')[1]?.trim()
+      }
+      // Niche patterns
+      else if (line.includes('Nicho:') || line.includes('Segmento:') || line.includes('Área:')) {
+        parsed.nicho = line.split(':')[1]?.trim()
+      }
+    }
+
+    // Apply parsed data to form
+    Object.keys(parsed).forEach(key => {
+      if (parsed[key]) {
+        handleInputChange(key, parsed[key])
+      }
+    })
+
+    console.log("✅ Parsed data applied:", parsed)
+  }
+
+  const handleAutoFill = () => {
+    if (autoFillData.trim()) {
+      parseAutoFillData(autoFillData)
+      setAutoFillData("")
+      setShowAutoFill(false)
     }
   }
 
   const handleSave = () => {
-    console.log("🔄 === INICIANDO SALVAMENTO ===")
-    console.log("📊 Dados do formulário:", formData)
+    // Validação básica - CAMPOS OBRIGATÓRIOS ATUALIZADOS
+    const requiredFields = [
+      "nomeEmpresa",
+      "produtoMarketing", 
+      "nicho",
+      "valorPagoLead",
+      "origemLead", // Mudança: era "tipoLead"
+      "nomeContato",
+      "email",
+      "telefone",
+      "sdr",
+      "arrematador", // Agora obrigatório
+      // "status" removido dos obrigatórios
+    ]
 
-    try {
-      // Validação básica - CAMPOS OBRIGATÓRIOS ATUALIZADOS
-      const requiredFields = [
-        "nomeEmpresa",
-        "produtoMarketing",
-        "nicho",
-        "valorPagoLead",
-        "origemLead", // Mudança: era "tipoLead"
-        "nomeContato",
-        "email",
-        "telefone",
-        "sdr",
-        "arrematador", // Agora obrigatório
-        // "status" removido dos obrigatórios
-      ]
+    const missingFields = requiredFields.filter((field) => {
+      const value = formData[field as keyof typeof formData]
+      return !value || value === ""
+    })
 
-      const missingFields = requiredFields.filter((field) => {
-        const value = formData[field as keyof typeof formData]
-        return !value || value === ""
-      })
-
-      if (missingFields.length > 0) {
-        alert(`❌ Campos obrigatórios não preenchidos:\n${missingFields.join(", ")}`)
-        return
-      }
-
-      console.log("✅ Validação passou, chamando onSave...")
-
-      // Chama a função de salvar
-      onSave(formData)
-    } catch (error) {
-      console.error("❌ Erro no handleSave:", error)
-      alert(`❌ Erro ao processar dados: ${error.message}`)
+    if (missingFields.length > 0) {
+      alert(`❌ Campos obrigatórios não preenchidos:\n${missingFields.join(", ")}`)
+      return
     }
+
+    onSave(formData)
   }
 
   if (!isOpen) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
@@ -241,17 +288,65 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
             </div>
             <DialogTitle className="text-xl font-semibold">{editingLead ? "Editar Lead" : "Novo Lead"}</DialogTitle>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            {!editingLead && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAutoFill(!showAutoFill)}
+                className="flex items-center space-x-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Preenchimento Automático</span>
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Campos Obrigatórios */}
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-red-900 mb-4">Campos Obrigatórios</h3>
+          {/* Auto-fill Section (MANTIDO ORIGINAL) */}
+          {showAutoFill && !editingLead && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <Sparkles className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-900">Preenchimento Automático</h3>
+              </div>
+              <p className="text-sm text-blue-700 mb-3">
+                Cole os dados do lead abaixo e o sistema preencherá automaticamente os campos:
+              </p>
+              <Textarea
+                placeholder="Cole aqui os dados do lead... 
+Exemplo:
+Empresa: Romalux Iluminação
+Contato: João Silva
+Email: joao@romalux.com.br
+Telefone: (11) 99999-9999
+Produto: Consultoria em Marketing
+Valor: R$ 150,00
+Cidade: São Paulo"
+                value={autoFillData}
+                onChange={(e) => setAutoFillData(e.target.value)}
+                className="min-h-[120px] mb-3"
+              />
+              <div className="flex space-x-2">
+                <Button onClick={handleAutoFill} className="bg-blue-600 hover:bg-blue-700">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Preencher Automaticamente
+                </Button>
+                <Button variant="outline" onClick={() => setShowAutoFill(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Informações Básicas */}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-red-900 mb-4">Informações Básicas *</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="nomeEmpresa">Nome da Empresa *</Label>
                 <Input
@@ -261,7 +356,6 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   onChange={(e) => handleInputChange("nomeEmpresa", e.target.value)}
                 />
               </div>
-
               <div>
                 <Label htmlFor="produtoMarketing">Produto de Marketing *</Label>
                 <Input
@@ -271,17 +365,33 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   onChange={(e) => handleInputChange("produtoMarketing", e.target.value)}
                 />
               </div>
-
               <div>
                 <Label htmlFor="nicho">Nicho *</Label>
+                <Select value={formData.nicho} onValueChange={(value) => handleInputChange("nicho", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o nicho" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Estruturação Estratégica">Estruturação Estratégica</SelectItem>
+                    <SelectItem value="Assessoria">Assessoria</SelectItem>
+                    <SelectItem value="Varejo">Varejo</SelectItem>
+                    <SelectItem value="Serviço">Serviço</SelectItem>
+                    <SelectItem value="Indústria">Indústria</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                    <SelectItem value="Turismo">Turismo</SelectItem>
+                    <SelectItem value="E-commerce">E-commerce</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="dataHoraCompra">Data/Hora da Compra do Lead</Label>
                 <Input
-                  id="nicho"
-                  placeholder="Digite o nicho"
-                  value={formData.nicho}
-                  onChange={(e) => handleInputChange("nicho", e.target.value)}
+                  id="dataHoraCompra"
+                  type="datetime-local"
+                  value={formData.dataHoraCompra}
+                  onChange={(e) => handleInputChange("dataHoraCompra", e.target.value)}
                 />
               </div>
-
               <div>
                 <Label htmlFor="valorPagoLead">Valor Pago no Lead (R$) *</Label>
                 <Input
@@ -293,7 +403,6 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   onChange={(e) => handleInputChange("valorPagoLead", e.target.value)}
                 />
               </div>
-
               <div>
                 <Label htmlFor="origemLead">Origem do Lead *</Label>
                 <Select value={formData.origemLead} onValueChange={(value) => handleInputChange("origemLead", value)}>
@@ -310,7 +419,79 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </div>
 
+          {/* Informações Complementares */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Complementares</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="faturamento">Faturamento</Label>
+                <Input
+                  id="faturamento"
+                  placeholder="Ex: De 401 mil à 1 milhão"
+                  value={formData.faturamento}
+                  onChange={(e) => handleInputChange("faturamento", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="canal">Canal</Label>
+                <Input
+                  id="canal"
+                  placeholder="Digite o canal"
+                  value={formData.canal}
+                  onChange={(e) => handleInputChange("canal", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="nivelUrgencia">Nível de Urgência</Label>
+                <Select value={formData.nivelUrgencia} onValueChange={(value) => handleInputChange("nivelUrgencia", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o nível" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="baixo">Baixo</SelectItem>
+                    <SelectItem value="medio">Médio</SelectItem>
+                    <SelectItem value="alto">Alto</SelectItem>
+                    <SelectItem value="urgente">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="regiao">Região</Label>
+                <Input
+                  id="regiao"
+                  placeholder="Digite a região"
+                  value={formData.regiao}
+                  onChange={(e) => handleInputChange("regiao", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cidade">Cidade</Label>
+                <Input
+                  id="cidade"
+                  placeholder="Digite a cidade"
+                  value={formData.cidade}
+                  onChange={(e) => handleInputChange("cidade", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cnpj">CNPJ</Label>
+                <Input
+                  id="cnpj"
+                  placeholder="00.000.000/0000-00"
+                  value={formData.cnpj}
+                  onChange={(e) => handleInputChange("cnpj", e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Informações de Contato */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">Informações de Contato *</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="nomeContato">Nome do Contato *</Label>
                 <Input
@@ -320,7 +501,15 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   onChange={(e) => handleInputChange("nomeContato", e.target.value)}
                 />
               </div>
-
+              <div>
+                <Label htmlFor="cargoContato">Cargo do Contato</Label>
+                <Input
+                  id="cargoContato"
+                  placeholder="Ex: Diretor, Gerente, etc."
+                  value={formData.cargoContato}
+                  onChange={(e) => handleInputChange("cargoContato", e.target.value)}
+                />
+              </div>
               <div>
                 <Label htmlFor="email">E-mail *</Label>
                 <Input
@@ -331,7 +520,16 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   onChange={(e) => handleInputChange("email", e.target.value)}
                 />
               </div>
-
+              <div>
+                <Label htmlFor="emailCorporativo">E-mail Corporativo</Label>
+                <Input
+                  id="emailCorporativo"
+                  type="email"
+                  placeholder="contato@empresa.com"
+                  value={formData.emailCorporativo}
+                  onChange={(e) => handleInputChange("emailCorporativo", e.target.value)}
+                />
+              </div>
               <div>
                 <Label htmlFor="telefone">Telefone *</Label>
                 <Input
@@ -341,7 +539,13 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   onChange={(e) => handleInputChange("telefone", e.target.value)}
                 />
               </div>
+            </div>
+          </div>
 
+          {/* Equipe e Processo */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-green-900 mb-4">Equipe e Processo *</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="sdr">SDR *</Label>
                 <Select value={formData.sdr} onValueChange={(value) => handleInputChange("sdr", value)}>
@@ -355,7 +559,20 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   </SelectContent>
                 </Select>
               </div>
-
+              <div>
+                <Label htmlFor="closer">Closer</Label>
+                <Select value={formData.closer} onValueChange={(value) => handleInputChange("closer", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o closer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="antonio">Antônio</SelectItem>
+                    <SelectItem value="gabrielli">Gabrielli</SelectItem>
+                    <SelectItem value="vanessa">Vanessa</SelectItem>
+                    <SelectItem value="jasson">Jasson</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label htmlFor="arrematador">Arrematador *</Label>
                 <Select value={formData.arrematador} onValueChange={(value) => handleInputChange("arrematador", value)}>
@@ -370,13 +587,30 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label htmlFor="produto">Produto</Label>
+                <Input
+                  id="produto"
+                  placeholder="Digite o produto"
+                  value={formData.produto}
+                  onChange={(e) => handleInputChange("produto", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="anuncios">Anúncios</Label>
+                <Input
+                  id="anuncios"
+                  placeholder="Digite informações sobre anúncios"
+                  value={formData.anuncios}
+                  onChange={(e) => handleInputChange("anuncios", e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Campos Opcionais */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Campos Opcionais</h3>
-
+          {/* Status e Acompanhamento */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-yellow-900 mb-4">Status e Acompanhamento</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="status">Status</Label>
@@ -395,61 +629,13 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
-                <Label htmlFor="dataHoraCompra">Data/Hora da Compra do Lead</Label>
+                <Label htmlFor="dataUltimoContato">Data do Último Contato</Label>
                 <Input
-                  id="dataHoraCompra"
-                  type="datetime-local"
-                  value={formData.dataHoraCompra}
-                  onChange={(e) => handleInputChange("dataHoraCompra", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="faturamento">Faturamento</Label>
-                <Input
-                  id="faturamento"
-                  placeholder="Ex: De 401 mil à 1 milhão"
-                  value={formData.faturamento}
-                  onChange={(e) => handleInputChange("faturamento", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="cidade">Cidade</Label>
-                <Input
-                  id="cidade"
-                  placeholder="Digite a cidade"
-                  value={formData.cidade}
-                  onChange={(e) => handleInputChange("cidade", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="closer">Closer</Label>
-                <Select value={formData.closer} onValueChange={(value) => handleInputChange("closer", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o closer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="antonio">Antônio</SelectItem>
-                    <SelectItem value="gabrielli">Gabrielli</SelectItem>
-                    <SelectItem value="vanessa">Vanessa</SelectItem>
-                    <SelectItem value="jasson">Jasson</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="valorVenda">Valor da Venda (R$)</Label>
-                <Input
-                  id="valorVenda"
-                  type="number"
-                  step="0.01"
-                  placeholder="0"
-                  value={formData.valorVenda}
-                  onChange={(e) => handleInputChange("valorVenda", e.target.value)}
+                  id="dataUltimoContato"
+                  type="date"
+                  value={formData.dataUltimoContato}
+                  onChange={(e) => handleInputChange("dataUltimoContato", e.target.value)}
                 />
               </div>
             </div>
