@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { X, RefreshCw } from "lucide-react"
+import { X, RefreshCw } from 'lucide-react'
 import type { Lead } from "@/app/page"
 
 interface NovoLeadModalProps {
@@ -25,16 +25,17 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
     produtoMarketing: "",
     nicho: "",
     valorPagoLead: "",
-    tipoLead: "",
+    origemLead: "", // Mudança: era "tipoLead"
     nomeContato: "",
     email: "",
     telefone: "",
     sdr: "",
-    status: "",
+    arrematador: "", // Agora obrigatório
 
     // Campos opcionais
+    status: "", // Agora opcional
     dataHoraCompra: "",
-    horarioCompra: "",
+    // horarioCompra removido
     faturamento: "",
     canal: "",
     nivelUrgencia: "",
@@ -44,8 +45,7 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
     cargoContato: "",
     emailCorporativo: "",
     closer: "",
-    arrematador: "",
-    tipoOferta: "",
+    // tipoOferta removido
     produto: "",
     anuncios: "",
     observacoes: "",
@@ -81,14 +81,14 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         produtoMarketing: "",
         nicho: "",
         valorPagoLead: "",
-        tipoLead: "",
+        origemLead: "",
         nomeContato: "",
         email: "",
         telefone: "",
         sdr: "",
+        arrematador: "",
         status: "",
         dataHoraCompra: "",
-        horarioCompra: "",
         faturamento: "",
         canal: "",
         nivelUrgencia: "",
@@ -98,8 +98,6 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         cargoContato: "",
         emailCorporativo: "",
         closer: "",
-        arrematador: "",
-        tipoOferta: "",
         produto: "",
         anuncios: "",
         observacoes: "",
@@ -134,14 +132,14 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         produtoMarketing: editingLead.produtoMarketing || "",
         nicho: editingLead.nicho || "",
         valorPagoLead: editingLead.valorPagoLead || "",
-        tipoLead: editingLead.tipoLead || "",
+        origemLead: editingLead.tipoLead || "", // Compatibilidade
         nomeContato: editingLead.nomeContato || "",
         email: editingLead.email || "",
         telefone: editingLead.telefone || "",
         sdr: editingLead.sdr || "",
+        arrematador: editingLead.arrematador || "",
         status: editingLead.status || "",
         dataHoraCompra: editingLead.dataHoraCompra || "",
-        horarioCompra: editingLead.horarioCompra || "",
         faturamento: editingLead.faturamento || "",
         canal: editingLead.canal || "",
         nivelUrgencia: editingLead.nivelUrgencia || "",
@@ -151,8 +149,6 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         cargoContato: editingLead.cargoContato || "",
         emailCorporativo: editingLead.emailCorporativo || "",
         closer: editingLead.closer || "",
-        arrematador: editingLead.arrematador || "",
-        tipoOferta: editingLead.tipoOferta || "",
         produto: editingLead.produto || "",
         anuncios: editingLead.anuncios || "",
         observacoes: editingLead.observacoes || "",
@@ -198,18 +194,19 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
     console.log("📊 Dados do formulário:", formData)
 
     try {
-      // Validação básica
+      // Validação básica - CAMPOS OBRIGATÓRIOS ATUALIZADOS
       const requiredFields = [
         "nomeEmpresa",
         "produtoMarketing",
         "nicho",
         "valorPagoLead",
-        "tipoLead",
+        "origemLead", // Mudança: era "tipoLead"
         "nomeContato",
         "email",
         "telefone",
         "sdr",
-        "status",
+        "arrematador", // Agora obrigatório
+        // "status" removido dos obrigatórios
       ]
 
       const missingFields = requiredFields.filter((field) => {
@@ -298,10 +295,10 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
               </div>
 
               <div>
-                <Label htmlFor="tipoLead">Tipo de Lead *</Label>
-                <Select value={formData.tipoLead} onValueChange={(value) => handleInputChange("tipoLead", value)}>
+                <Label htmlFor="origemLead">Origem do Lead *</Label>
+                <Select value={formData.origemLead} onValueChange={(value) => handleInputChange("origemLead", value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
+                    <SelectValue placeholder="Selecione a origem" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="leadbroker">LeadBroker</SelectItem>
@@ -360,7 +357,29 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
               </div>
 
               <div>
-                <Label htmlFor="status">Status *</Label>
+                <Label htmlFor="arrematador">Arrematador *</Label>
+                <Select value={formData.arrematador} onValueChange={(value) => handleInputChange("arrematador", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o arrematador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="antonio">Antônio</SelectItem>
+                    <SelectItem value="gabrielli">Gabrielli</SelectItem>
+                    <SelectItem value="vanessa">Vanessa</SelectItem>
+                    <SelectItem value="jasson">Jasson</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Campos Opcionais */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Campos Opcionais</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="status">Status</Label>
                 <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o status" />
@@ -375,6 +394,63 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
                     <SelectItem value="NO-SHOW/REMARCANDO">No-Show/Remarcando</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="dataHoraCompra">Data/Hora da Compra do Lead</Label>
+                <Input
+                  id="dataHoraCompra"
+                  type="datetime-local"
+                  value={formData.dataHoraCompra}
+                  onChange={(e) => handleInputChange("dataHoraCompra", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="faturamento">Faturamento</Label>
+                <Input
+                  id="faturamento"
+                  placeholder="Ex: De 401 mil à 1 milhão"
+                  value={formData.faturamento}
+                  onChange={(e) => handleInputChange("faturamento", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cidade">Cidade</Label>
+                <Input
+                  id="cidade"
+                  placeholder="Digite a cidade"
+                  value={formData.cidade}
+                  onChange={(e) => handleInputChange("cidade", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="closer">Closer</Label>
+                <Select value={formData.closer} onValueChange={(value) => handleInputChange("closer", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o closer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="antonio">Antônio</SelectItem>
+                    <SelectItem value="gabrielli">Gabrielli</SelectItem>
+                    <SelectItem value="vanessa">Vanessa</SelectItem>
+                    <SelectItem value="jasson">Jasson</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="valorVenda">Valor da Venda (R$)</Label>
+                <Input
+                  id="valorVenda"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.valorVenda}
+                  onChange={(e) => handleInputChange("valorVenda", e.target.value)}
+                />
               </div>
             </div>
           </div>
