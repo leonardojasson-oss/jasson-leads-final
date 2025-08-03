@@ -164,11 +164,24 @@ export const leadOperations = {
       // Try Supabase in background if configured
       if (isSupabaseConfigured && supabase) {
         try {
-          // Clean data for Supabase
+          // Clean data for Supabase - convert empty strings to null for date fields
           const cleanedLead: any = {}
+          const dateFields = ["data_hora_compra", "data_ultimo_contato", "data_venda", "data_fechamento"]
+
           Object.keys(lead).forEach((key) => {
-            cleanedLead[key] = cleanValue((lead as any)[key])
+            const value = (lead as any)[key]
+
+            // Convert empty strings to null for date fields
+            if (dateFields.includes(key) && (value === "" || value === undefined)) {
+              cleanedLead[key] = null
+            } else if (value === "" || value === undefined) {
+              cleanedLead[key] = null
+            } else {
+              cleanedLead[key] = value
+            }
           })
+
+          console.log("🧹 Cleaned data for Supabase:", cleanedLead)
 
           const { data, error } = await supabase.from("leads").insert([cleanedLead]).select().single()
 
