@@ -69,7 +69,6 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
   })
 
   const [autoFillData, setAutoFillData] = useState("")
-  const [showAutoFill, setShowAutoFill] = useState(false)
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -123,7 +122,6 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
         statusComissao: "",
       })
       setAutoFillData("")
-      setShowAutoFill(false)
     }
 
     if (editingLead && isOpen) {
@@ -185,7 +183,7 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
     }))
   }
 
-  // Auto-fill parser function (MANTIDO ORIGINAL)
+  // Auto-fill parser function (MELHORADO)
   const parseAutoFillData = (data: string) => {
     console.log("🔄 Parsing auto-fill data:", data)
     
@@ -193,39 +191,68 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
     const parsed: any = {}
 
     for (const line of lines) {
+      const lowerLine = line.toLowerCase()
+      
       // Company name patterns
-      if (line.includes('Empresa:') || line.includes('Nome da empresa:') || line.includes('Company:')) {
+      if (lowerLine.includes('empresa:') || lowerLine.includes('nome da empresa:') || lowerLine.includes('company:')) {
         parsed.nomeEmpresa = line.split(':')[1]?.trim()
       }
       // Contact name patterns
-      else if (line.includes('Contato:') || line.includes('Nome:') || line.includes('Contact:')) {
+      else if (lowerLine.includes('contato:') || lowerLine.includes('nome:') || lowerLine.includes('contact:') || lowerLine.includes('nome do contato:')) {
         parsed.nomeContato = line.split(':')[1]?.trim()
       }
       // Email patterns
-      else if (line.includes('@') && (line.includes('Email:') || line.includes('E-mail:') || line.includes('email'))) {
+      else if (line.includes('@') && (lowerLine.includes('email:') || lowerLine.includes('e-mail:') || lowerLine.includes('email'))) {
         const emailMatch = line.match(/[\w.-]+@[\w.-]+\.\w+/)
         if (emailMatch) parsed.email = emailMatch[0]
       }
       // Phone patterns
-      else if (line.includes('Telefone:') || line.includes('Phone:') || line.includes('Tel:')) {
+      else if (lowerLine.includes('telefone:') || lowerLine.includes('phone:') || lowerLine.includes('tel:') || lowerLine.includes('celular:')) {
         parsed.telefone = line.split(':')[1]?.trim()
       }
       // Product patterns
-      else if (line.includes('Produto:') || line.includes('Product:') || line.includes('Serviço:')) {
+      else if (lowerLine.includes('produto:') || lowerLine.includes('product:') || lowerLine.includes('serviço:') || lowerLine.includes('produto de marketing:')) {
         parsed.produtoMarketing = line.split(':')[1]?.trim()
       }
       // Value patterns
-      else if (line.includes('Valor:') || line.includes('Price:') || line.includes('R$')) {
+      else if (lowerLine.includes('valor:') || lowerLine.includes('price:') || line.includes('R$') || lowerLine.includes('preço:')) {
         const valueMatch = line.match(/R?\$?\s*(\d+[.,]?\d*)/)
         if (valueMatch) parsed.valorPagoLead = valueMatch[1].replace(',', '.')
       }
       // City patterns
-      else if (line.includes('Cidade:') || line.includes('City:') || line.includes('Local:')) {
+      else if (lowerLine.includes('cidade:') || lowerLine.includes('city:') || lowerLine.includes('local:')) {
         parsed.cidade = line.split(':')[1]?.trim()
       }
       // Niche patterns
-      else if (line.includes('Nicho:') || line.includes('Segmento:') || line.includes('Área:')) {
-        parsed.nicho = line.split(':')[1]?.trim()
+      else if (lowerLine.includes('nicho:') || lowerLine.includes('segmento:') || lowerLine.includes('área:') || lowerLine.includes('setor:')) {
+        const nichoValue = line.split(':')[1]?.trim()
+        if (nichoValue) {
+          // Map common values to our options
+          const nichoMap: { [key: string]: string } = {
+            'varejo': 'Varejo',
+            'servico': 'Serviço',
+            'serviço': 'Serviço',
+            'industria': 'Indústria',
+            'indústria': 'Indústria',
+            'assessoria': 'Assessoria',
+            'turismo': 'Turismo',
+            'ecommerce': 'E-commerce',
+            'e-commerce': 'E-commerce',
+            'estruturacao': 'Estruturação Estratégica',
+            'estruturação': 'Estruturação Estratégica'
+          }
+          parsed.nicho = nichoMap[nichoValue.toLowerCase()] || nichoValue
+        }
+      }
+      // CNPJ patterns
+      else if (lowerLine.includes('cnpj:') || line.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/)) {
+        const cnpjMatch = line.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/)
+        if (cnpjMatch) parsed.cnpj = cnpjMatch[0]
+        else parsed.cnpj = line.split(':')[1]?.trim()
+      }
+      // Faturamento patterns
+      else if (lowerLine.includes('faturamento:') || lowerLine.includes('receita:')) {
+        parsed.faturamento = line.split(':')[1]?.trim()
       }
     }
 
@@ -237,13 +264,14 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
     })
 
     console.log("✅ Parsed data applied:", parsed)
+    
+    // Clear the auto-fill field after parsing
+    setAutoFillData("")
   }
 
   const handleAutoFill = () => {
     if (autoFillData.trim()) {
       parseAutoFillData(autoFillData)
-      setAutoFillData("")
-      setShowAutoFill(false)
     }
   }
 
@@ -288,64 +316,65 @@ export function NovoLeadModal({ isOpen, onClose, onSave, editingLead, saving = f
             </div>
             <DialogTitle className="text-xl font-semibold">{editingLead ? "Editar Lead" : "Novo Lead"}</DialogTitle>
           </div>
-          <div className="flex items-center space-x-2">
-            {!editingLead && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAutoFill(!showAutoFill)}
-                className="flex items-center space-x-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Preenchimento Automático</span>
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Auto-fill Section (MANTIDO ORIGINAL) */}
-          {showAutoFill && !editingLead && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          {/* PREENCHIMENTO AUTOMÁTICO NO CABEÇALHO */}
+          {!editingLead && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <Sparkles className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-blue-900">Preenchimento Automático</h3>
+                <h3 className="text-lg font-semibold text-blue-900">✨ Preenchimento Automático</h3>
               </div>
               <p className="text-sm text-blue-700 mb-3">
-                Cole os dados do lead abaixo e o sistema preencherá automaticamente os campos:
+                Cole os dados do lead abaixo e clique em "Preencher" para completar automaticamente os campos:
               </p>
-              <Textarea
-                placeholder="Cole aqui os dados do lead... 
+              <div className="space-y-3">
+                <Textarea
+                  placeholder="Cole aqui os dados do lead... 
+
 Exemplo:
 Empresa: Romalux Iluminação
-Contato: João Silva
+Contato: João Silva  
 Email: joao@romalux.com.br
 Telefone: (11) 99999-9999
-Produto: Consultoria em Marketing
+Produto: Consultoria em Marketing Digital
 Valor: R$ 150,00
-Cidade: São Paulo"
-                value={autoFillData}
-                onChange={(e) => setAutoFillData(e.target.value)}
-                className="min-h-[120px] mb-3"
-              />
-              <div className="flex space-x-2">
-                <Button onClick={handleAutoFill} className="bg-blue-600 hover:bg-blue-700">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Preencher Automaticamente
-                </Button>
-                <Button variant="outline" onClick={() => setShowAutoFill(false)}>
-                  Cancelar
-                </Button>
+Cidade: São Paulo
+Nicho: Varejo
+CNPJ: 12.345.678/0001-90"
+                  value={autoFillData}
+                  onChange={(e) => setAutoFillData(e.target.value)}
+                  className="min-h-[120px] resize-none"
+                />
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={handleAutoFill} 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={!autoFillData.trim()}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Preencher Automaticamente
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setAutoFillData("")}
+                    disabled={!autoFillData.trim()}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Limpar
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
           {/* Informações Básicas */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-red-900 mb-4">Informações Básicas *</h3>
+            <h3 className="text-lg font-semibold text-red-900 mb-4">📋 Informações Básicas *</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="nomeEmpresa">Nome da Empresa *</Label>
@@ -424,7 +453,7 @@ Cidade: São Paulo"
 
           {/* Informações Complementares */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Complementares</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Informações Complementares</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="faturamento">Faturamento</Label>
@@ -490,7 +519,7 @@ Cidade: São Paulo"
 
           {/* Informações de Contato */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-blue-900 mb-4">Informações de Contato *</h3>
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">👤 Informações de Contato *</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="nomeContato">Nome do Contato *</Label>
@@ -544,7 +573,7 @@ Cidade: São Paulo"
 
           {/* Equipe e Processo */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-green-900 mb-4">Equipe e Processo *</h3>
+            <h3 className="text-lg font-semibold text-green-900 mb-4">👥 Equipe e Processo *</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="sdr">SDR *</Label>
@@ -610,7 +639,7 @@ Cidade: São Paulo"
 
           {/* Status e Acompanhamento */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-yellow-900 mb-4">Status e Acompanhamento</h3>
+            <h3 className="text-lg font-semibold text-yellow-900 mb-4">📈 Status e Acompanhamento</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="status">Status</Label>
@@ -643,7 +672,7 @@ Cidade: São Paulo"
 
           {/* Observações */}
           <div>
-            <Label htmlFor="observacoes">Observações</Label>
+            <Label htmlFor="observacoes">📝 Observações</Label>
             <Textarea
               id="observacoes"
               placeholder="Digite observações sobre o lead..."
